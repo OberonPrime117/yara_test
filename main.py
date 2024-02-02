@@ -1,19 +1,27 @@
-import yara
 import os
-import time
+import yara
 
-rules = yara.compile(filepath='rules.yar') 
+def scan_directory(directory_path, rule_file):
+    try:
+        # Compile the YARA rule from the provided file
+        compiled_rule = yara.compile(filepath=rule_file)
 
-path_to_watch = '/home/user/monitored_directory'
+        # Walk through the directory and scan files
+        for root, _, files in os.walk(directory_path):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                try:
+                    with open(file_path, "rb") as file:
+                        data = file.read()
+                        matches = compiled_rule.match(data=data)
+                        if matches:
+                            print(f"Match found in {file_path}: {matches[0].rule}")
+                except Exception as e:
+                    print(f"Error scanning {file_path}: {e}")
+    except Exception as e:
+        print(f"Error compiling YARA rule: {e}")
 
-before = dict ([(f, None) for f in os.listdir (path_to_watch)])
-while 1:
-  after = dict ([(f, None) for f in os.listdir (path_to_watch)])
-  added = [f for f in after if not f in before]
-  removed = [f for f in before if not f in after]
-  for added_file in added:
-    filepath = os.path.join(path_to_watch, added_file)
-    if rules.match(filepath):
-      print(f'Yara rule match on {filepath}')
-  before = after 
-  time.sleep (1)
+if __name__ == "__main__":
+    target_directory = "/path/to/your/directory"  # Replace with the directory you want to scan
+    yara_rule_file = "/path/to/your/my_rules.yar"  # Replace with the path to your YARA rule file
+    scan_directory(target_directory, yara_rule_file)
